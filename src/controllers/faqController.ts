@@ -14,10 +14,7 @@ export const createFaq = async (req: Request, res: Response) => {
       originalLanguage,
     }: CreateFaq = req.body;
 
-    // Initialize translations map with English as default
-
     const translations = new Map();
-
     for (const lang of targetLanguages) {
       if (lang === originalLanguage) {
         translations.set(lang, {
@@ -143,30 +140,26 @@ export const getAllFaq = async (req: Request, res: Response) => {
     if (!lang) {
       lang = "en";
     }
-    const faqs = await Faq.find();
+    const faqs = await Faq.find({ status: "published" });
 
-    const translatedFaqs = faqs.map((faq) => {
-      // Try to get translation for requested language
-      const translation = faq.translations?.[lang as string];
+    // get the translations for the faqs for the given language and if there no translation don't include it in the response
+    const translatedFaqs = faqs
+      .map((faq) => {
+        const translations = faq.translations;
+        if (translations instanceof Map) {
+          const translation = translations.get(lang as string);
+          if (!translation) return null; // Skip if translation doesn't exist
 
-      // Fallback to English if translation not found
-      if (!translation) {
-        const englishTranslation = faq.translations?.["en"];
-        return {
-          id: faq._id,
-          question: englishTranslation?.question || "",
-          answer: englishTranslation?.answer || "",
-          category: faq.category,
-        };
-      }
-
-      return {
-        id: faq._id,
-        question: translation.question,
-        answer: translation.answer,
-        category: faq.category,
-      };
-    });
+          return {
+            id: faq._id,
+            question: translation.question,
+            answer: translation.answer,
+            category: faq.category,
+          };
+        }
+        return null;
+      })
+      .filter((faq) => faq !== null);
 
     res.status(200).json({
       message: "All FAQ fetched successfully",
