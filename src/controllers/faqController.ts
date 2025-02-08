@@ -16,12 +16,13 @@ const getTranslations = async (
   originalLanguage: string
 ) => {
   const translations: TranslationMap = {};
+  translations[originalLanguage] = {
+    question: question,
+    answer: answer,
+  };
+
   for (const lang of targetLanguages) {
     if (lang === originalLanguage) {
-      translations[lang] = {
-        question: question,
-        answer: answer,
-      };
       continue;
     }
     try {
@@ -117,15 +118,25 @@ export const updateFaq = async (req: Request, res: Response) => {
     if (!id) {
       throw new ApiError("Id is required", 400);
     }
-    const { question, answer, category, targetLanguages } = req.body;
+    const { question, answer, category, targetLanguages, originalLanguage } =
+      req.body;
 
     const faq = await Faq.findByIdAndUpdate(id, {
       question,
       answer,
       category,
       targetLanguages,
+      originalLanguage,
     });
-    if (category !== faq?.category) {
+
+    //I want to check if the category is changed only then no need to update the translations
+
+    if (
+      question !== faq?.translations?.question ||
+      answer !== faq?.translations?.answer ||
+      targetLanguages !== faq?.targetLanguages ||
+      originalLanguage !== faq?.originalLanguage
+    ) {
       const translations = await getTranslations(
         question,
         answer,
