@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { Faq } from "../models/Faq";
-import { CreateFaq, TranslationMap } from "../types/faq.types";
+import {
+  AuthenticatedRequest,
+  CreateFaq,
+  TranslationMap,
+} from "../types/faq.types";
 import { ApiError } from "../utils/ApiError";
 import { translateText } from "../service/translate";
 import redis from "../config/redis";
@@ -42,7 +46,7 @@ const getTranslations = async (
   return translations;
 };
 
-export const createFaq = async (req: Request, res: Response) => {
+export const createFaq = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
       question,
@@ -51,6 +55,9 @@ export const createFaq = async (req: Request, res: Response) => {
       targetLanguages,
       originalLanguage,
     }: CreateFaq = req.body;
+
+    const admin = req.admin;
+
     const translations = await getTranslations(
       question,
       answer,
@@ -60,8 +67,10 @@ export const createFaq = async (req: Request, res: Response) => {
     const faq = await Faq.create({
       category,
       translations,
+      targetLanguages,
       originalLanguage: originalLanguage,
       status: "published",
+      createdBy: admin.id,
     });
     await faq.save();
 

@@ -31,6 +31,15 @@ const faqSchema = new Schema(
       type: String,
       index: true,
     },
+    targetLanguages: {
+      type: [String],
+      required: false,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "admin",
+      required: false,
+    },
   },
   {
     timestamps: true,

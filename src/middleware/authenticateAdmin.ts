@@ -9,10 +9,12 @@ export const authenticateAdmin = async (
   next: NextFunction
 ) => {
   try {
-    const { accessToken } = req.cookies;
+    const { accessToken } = req?.cookies;
+
     if (!accessToken) {
       throw new ApiError("Access token is required", 401);
     }
+
     const decoded = verifyToken(accessToken, "accessToken");
     req.admin = decoded;
     next();

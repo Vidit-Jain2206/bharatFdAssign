@@ -30,6 +30,8 @@ export interface FaqDocument {
   category?: string;
   createdAt: Date;
   updatedAt: Date;
+  createdBy: string;
+  targetLanguages: string[];
 }
 
 export interface AdminDocument {
