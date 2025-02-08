@@ -3,6 +3,7 @@ import { Faq } from "../models/Faq";
 import { CreateFaq } from "../types/faq.types";
 import { ApiError } from "../utils/ApiError";
 import { translateText } from "../service/translate";
+import redis from "../config/redis";
 
 export const createFaq = async (req: Request, res: Response) => {
   try {
@@ -140,8 +141,18 @@ export const getAllFaq = async (req: Request, res: Response) => {
     if (!lang) {
       lang = "en";
     }
-    const faqs = await Faq.find({ status: "published" });
 
+    // check if the data is present in the redis cache
+    const cachedFaqs = await redis.get(`faqs:${lang}`);
+    if (cachedFaqs) {
+      res.status(200).json({
+        message: "All FAQ fetched successfully",
+        faqs: JSON.parse(cachedFaqs),
+      });
+      return;
+    }
+
+    const faqs = await Faq.find({ status: "published" });
     // get the translations for the faqs for the given language and if there no translation don't include it in the response
     const translatedFaqs = faqs
       .map((faq) => {
@@ -160,6 +171,14 @@ export const getAllFaq = async (req: Request, res: Response) => {
         return null;
       })
       .filter((faq) => faq !== null);
+
+    // store the data in the redis cache
+    await redis.set(
+      `faqs:${lang}`,
+      JSON.stringify(translatedFaqs),
+      "EX",
+      60 * 60 * 24 // 1 day
+    );
 
     res.status(200).json({
       message: "All FAQ fetched successfully",
