@@ -1,18 +1,8 @@
 import { Router } from "express";
-import {
-  createFaq,
-  deleteFaq,
-  getAllFaq,
-  getFaqById,
-  updateFaq,
-} from "../../controllers/faqController";
+import faqRouter from "./faq";
+import authRouter from "./auth";
 
 const v1Router = Router();
-v1Router.get("/faq", getAllFaq);
-
-v1Router.post("/faq", createFaq);
-v1Router.put("/faq/:id", updateFaq);
-v1Router.get("/faq/:id", getFaqById);
-v1Router.delete("/faq/:id", deleteFaq);
-
+v1Router.use("/faq", faqRouter);
+v1Router.use("/admin", authRouter);
 export default v1Router;

@@ -1,9 +1,46 @@
 import { Request, Response } from "express";
 import { Faq } from "../models/Faq";
-import { CreateFaq } from "../types/faq.types";
+import { CreateFaq, TranslationMap } from "../types/faq.types";
 import { ApiError } from "../utils/ApiError";
 import { translateText } from "../service/translate";
 import redis from "../config/redis";
+
+const getTranslations = async (
+  question: string,
+  answer: string,
+  targetLanguages: string[],
+  originalLanguage: string
+) => {
+  const translations: TranslationMap = {};
+  for (const lang of targetLanguages) {
+    if (lang === originalLanguage) {
+      translations[lang] = {
+        question: question,
+        answer: answer,
+      };
+      continue;
+    }
+    try {
+      const translatedQuestion = await translateText(question, lang);
+      const translatedAnswer = await translateText(answer, lang);
+
+      translations[lang] = {
+        question: translatedQuestion,
+        answer: translatedAnswer,
+      };
+    } catch (error) {
+      console.error(`Translation failed for language ${lang}:`, error);
+      const translatedQuestion = await translateText(question, "en");
+      const translatedAnswer = await translateText(answer, "en");
+
+      translations["en"] = {
+        question: translatedQuestion,
+        answer: translatedAnswer,
+      };
+    }
+  }
+  return translations;
+};
 
 export const createFaq = async (req: Request, res: Response) => {
   try {
@@ -14,36 +51,12 @@ export const createFaq = async (req: Request, res: Response) => {
       targetLanguages,
       originalLanguage,
     }: CreateFaq = req.body;
-
-    const translations = new Map();
-    for (const lang of targetLanguages) {
-      if (lang === originalLanguage) {
-        translations.set(lang, {
-          question: question,
-          answer: answer,
-        });
-        continue;
-      }
-      try {
-        const translatedQuestion = await translateText(question, lang);
-        const translatedAnswer = await translateText(answer, lang);
-
-        translations.set(lang, {
-          question: translatedQuestion,
-          answer: translatedAnswer,
-        });
-      } catch (error) {
-        console.error(`Translation failed for language ${lang}:`, error);
-        const translatedQuestion = await translateText(question, "en");
-        const translatedAnswer = await translateText(answer, "en");
-
-        translations.set("en", {
-          question: translatedQuestion,
-          answer: translatedAnswer,
-        });
-      }
-    }
-
+    const translations = await getTranslations(
+      question,
+      answer,
+      targetLanguages,
+      originalLanguage
+    );
     const faq = await Faq.create({
       category,
       translations,
@@ -95,13 +108,26 @@ export const updateFaq = async (req: Request, res: Response) => {
     if (!id) {
       throw new ApiError("Id is required", 400);
     }
-    const { question, answer, category, targetLanguages }: CreateFaq = req.body;
+    const { question, answer, category, targetLanguages } = req.body;
+
     const faq = await Faq.findByIdAndUpdate(id, {
       question,
       answer,
       category,
       targetLanguages,
     });
+    if (category !== faq?.category) {
+      const translations = await getTranslations(
+        question,
+        answer,
+        targetLanguages,
+        faq?.originalLanguage || "en"
+      );
+      if (faq) {
+        faq.translations = translations;
+        await faq.save();
+      }
+    }
     res.status(200).json({
       message: "FAQ updated successfully",
       faq,

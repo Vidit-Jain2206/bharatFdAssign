@@ -1,3 +1,5 @@
+import { Request } from "express";
+
 export interface Translation {
   question: string;
   answer: string;
@@ -15,6 +17,11 @@ export interface CreateFaq {
   originalLanguage: string;
 }
 
+export interface CreateAdmin {
+  email: string;
+  password: string;
+}
+
 export interface FaqDocument {
   _id: string;
   originalLanguage: string;
@@ -23,6 +30,20 @@ export interface FaqDocument {
   category?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AdminDocument {
+  _id: string;
+  email: string;
+  password: string;
+  refreshToken?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  comparePassword: (password: string) => Promise<boolean>;
+  save: (data: any) => Promise<AdminDocument>;
+}
+export interface AuthenticatedRequest extends Request {
+  admin?: any;
 }
 
 // structure of my faq
