@@ -123,3 +123,59 @@ We welcome contributions! Please follow these steps:
 3. Make your changes and commit them
 4. Push to your fork
 5. Create a pull request
+
+## System Design
+
+### Previous Architecture Challenges
+
+The initial monolithic architecture faced several limitations:
+
+1. **Synchronous Translation**: FAQ creation was slow due to waiting for translations
+2. **Resource Intensive**: Translation operations blocked the main API server
+3. **Poor Scalability**: Difficult to scale translation services independently
+4. **Single Point of Failure**: Server overload during heavy translation requests
+
+### Improved Microservice Architecture
+
+We addressed these challenges with a distributed microservice architecture:
+
+#### Components
+
+1. **API Server**
+   - Handles client requests
+   - Manages authentication
+   - Stores base FAQ content
+   - Queues translation requests
+2. **Redis Queue**
+   - Acts as message broker
+   - Ensures reliable message delivery
+   - Handles backpressure
+3. **Translation Service**
+   - Listens to Redis queue
+   - Processes translations asynchronously
+   - Supports multiple language pairs
+   - Updates database with translations
+
+#### Flow
+
+1. Client sends FAQ creation request to API server
+2. API server:
+   - Validates request
+   - Stores base content
+   - Sends acknowledgment to client
+   - Queues translation job
+3. Translation service:
+   - Picks jobs from queue
+   - Translates content
+   - Updates database
+   - Refreshes cache
+
+#### Benefits
+
+- ⚡ **Improved Performance**: Async translation doesn't block API responses
+- 📈 **Better Scalability**: Services can scale independently
+- 💪 **Increased Reliability**: Fault isolation between services
+- 🔄 **Queue-Based Resilience**: No data loss during service downtime
+
+[System Architecture Diagram]
+![Architecture Diagram](./FAQManagement.png)
