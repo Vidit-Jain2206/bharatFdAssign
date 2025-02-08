@@ -2,21 +2,64 @@ import { Request, Response } from "express";
 import { Faq } from "../models/Faq";
 import { CreateFaq } from "../types/faq.types";
 import { ApiError } from "../utils/ApiError";
+import { translateText } from "../service/translate";
 
 export const createFaq = async (req: Request, res: Response) => {
   try {
-    const { question, answer, category, targetLanguages }: CreateFaq = req.body;
-    const faq = await Faq.create({
+    const {
       question,
       answer,
       category,
       targetLanguages,
+      originalLanguage,
+    }: CreateFaq = req.body;
+
+    // Initialize translations map with English as default
+
+    const translations = new Map();
+
+    for (const lang of targetLanguages) {
+      if (lang === originalLanguage) {
+        translations.set(lang, {
+          question: question,
+          answer: answer,
+        });
+        continue;
+      }
+      try {
+        const translatedQuestion = await translateText(question, lang);
+        const translatedAnswer = await translateText(answer, lang);
+
+        translations.set(lang, {
+          question: translatedQuestion,
+          answer: translatedAnswer,
+        });
+      } catch (error) {
+        console.error(`Translation failed for language ${lang}:`, error);
+        const translatedQuestion = await translateText(question, "en");
+        const translatedAnswer = await translateText(answer, "en");
+
+        translations.set("en", {
+          question: translatedQuestion,
+          answer: translatedAnswer,
+        });
+      }
+    }
+
+    const faq = await Faq.create({
+      category,
+      translations,
+      originalLanguage: originalLanguage,
+      status: "published",
     });
+    await faq.save();
+
     res.status(201).json({
       message: "FAQ created successfully",
-      faq,
+      faq: faq,
     });
   } catch (error) {
+    console.log("error", error);
     if (error instanceof ApiError) {
       res.status(error.statusCode).json({ message: error.message });
       return;
@@ -100,20 +143,34 @@ export const getAllFaq = async (req: Request, res: Response) => {
     if (!lang) {
       lang = "en";
     }
-    const faq = await Faq.find();
-    console.log(faq);
-    console.log(lang);
-    const translatedFaq = faq.map((faq) => {
-      const translatedFaq = faq.translations?.[lang as string];
+    const faqs = await Faq.find();
+
+    const translatedFaqs = faqs.map((faq) => {
+      // Try to get translation for requested language
+      const translation = faq.translations?.[lang as string];
+
+      // Fallback to English if translation not found
+      if (!translation) {
+        const englishTranslation = faq.translations?.["en"];
+        return {
+          id: faq._id,
+          question: englishTranslation?.question || "",
+          answer: englishTranslation?.answer || "",
+          category: faq.category,
+        };
+      }
+
       return {
         id: faq._id,
-        question: translatedFaq?.question || "",
-        answer: translatedFaq?.answer || "",
+        question: translation.question,
+        answer: translation.answer,
+        category: faq.category,
       };
     });
+
     res.status(200).json({
       message: "All FAQ fetched successfully",
-      translatedFaq,
+      faqs: translatedFaqs,
     });
   } catch (error) {
     if (error instanceof ApiError) {

@@ -12,6 +12,7 @@ export interface CreateFaq {
   answer: string;
   category?: string;
   targetLanguages: string[];
+  originalLanguage: string;
 }
 
 export interface FaqDocument {
