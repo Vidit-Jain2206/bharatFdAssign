@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 export const connection = async () => {
   return new Promise((resolve, reject) => {
     mongoose
-      .connect(process.env.MONGO_URI!)
+      .connect(process.env.MONGODB_URI!)
       .then(() => {
         resolve(true);
       })

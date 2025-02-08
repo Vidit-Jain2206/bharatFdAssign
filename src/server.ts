@@ -4,7 +4,7 @@ import { connection } from "./config/database";
 import router from "./routes";
 import cookieParser from "cookie-parser";
 dotenv.config();
-const app = express();
+export const app = express();
 
 connection()
   .then(() => {
